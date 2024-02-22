@@ -30,7 +30,7 @@
     <h2 class="driverState">
         Current state: <%= state %>
     </h2>
-    <h3 class="stateUpdatedAt">State updated at:
+    <h3 class="stateUpdatedAt">State updated at: <%= time %>
     </h3>
 
     <button class="accept" onclick="updateUberDriveState('accept')">ACCEPT</button>
@@ -79,13 +79,15 @@
                 '/update?' + new URLSearchParams({ state: state }),
             ).then((resp) => {
                 resp.json().then((j) => {
+                    console.log(`j`);
                     console.log(j);
+
                     driverState.innerHTML = `Current state: ${j.state}`
-                    stateUpdatedAt.innerHTML = `State updated at: ${new Date(j.updatedAt)}`
-                }).catch(e => console.log(e))
-            }).catch((c) => { console.log(c); })
+                    
+                }).catch(e => {console.log(`in`); console.log(e.msg); alert(e.msg)})
+            }).catch((c) => { console.log(`c`); console.log(c); alert(c)})
         }
     </script>
 </body>
 
-</html>
+</html> 

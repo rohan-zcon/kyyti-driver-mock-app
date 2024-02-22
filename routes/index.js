@@ -49,10 +49,11 @@ async function updateUberDriveState(state, runId) {
     });
 
     await setData("state", SIMULATOR_DRIVER_STATES[state] );
+    await setData("time", new Date());
 
   } catch (error) {
-    console.log(error);
-    // throw new Error(`In catch Error when calling ${state}: ${error.status}`);
+    console.log(error.response.data);
+    throw new Error(`In catch Error when calling ${state}: ${error.response.status}- ${JSON.stringify(error.response.data)}`);
   }
 
 }
@@ -61,7 +62,9 @@ async function updateUberDriveState(state, runId) {
 router.get('/', async function (req, res, next) {
   const {run: runId} = await getData("run");
   const {state} = await getData("state");
-  res.render('index', { runId, state });
+  const {time} = await getData("time");
+  console.log(time)
+  res.render('index', { runId, state, time });
 });
 
 router.get('/update', async function (req, res, next) {
@@ -69,10 +72,11 @@ router.get('/update', async function (req, res, next) {
     const { run: runId } = await getData("run");
     const resp = await updateUberDriveState(req.query.state, runId);
     const { state } = await getData("state");
-    res.json({ state, status: "success", updatedAt: new Date() });
+    const {time} = await getData("time");
+    res.json({ state, status: "success", updatedAt: time});
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ msg: "Somethign wrong when updating state", err: error })
+    console.log(error.message);
+    res.status(500).send({msg: error.message});
   }
 });
 
