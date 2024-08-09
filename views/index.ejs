@@ -33,6 +33,8 @@
     <h3 class="stateUpdatedAt">State updated at: <%= time %>
     </h3>
 
+    <h4 class="tokenExpiry">Cached auth token will expire and be auto-refreshed on: <%= tokExpiry %> </h4>
+
     <button class="accept" onclick="updateUberDriveState('accept')">ACCEPT</button>
     <br>
 
@@ -66,6 +68,7 @@
         const driverState = document.querySelector(".driverState");
         const stateUpdatedAt = document.querySelector(".stateUpdatedAt");
         const runIdForm = document.querySelector(".runIdForm");
+        const tokenExpiry = document.querySelector(".tokenExpiry");
 
         runIdForm.addEventListener("submit", (e) => {
             const runIdIp = document.querySelector(".runIdIp");

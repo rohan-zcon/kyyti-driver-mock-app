@@ -2,6 +2,14 @@ var express = require('express');
 var router = express.Router();
 const axios = require('axios');
 const fs = require("fs").promises;
+const moment = require('moment');
+const qs = require('qs')
+
+/**
+ * @type {{token: string, expiry: string}} authToken
+ */
+let authToken;
+const TOKEN_EXPIRY_DAYS = 28;
 
 const SIMULATOR_DRIVER_STATES = {
   accept: 'ACCEPT',
@@ -11,6 +19,43 @@ const SIMULATOR_DRIVER_STATES = {
   goOnline: 'GO_ONLINE',
   goOffline: 'GO_OFFLINE'
 };
+
+async function getToken() {
+try {
+    if (authToken && moment().isBefore(authToken.expiry)){
+      console.log('using cached token');
+      return `Bearer ${authToken.token}`;
+    }
+  
+    console.log('cached token expired. refreshing token');
+  
+    const params = {
+      client_id: process.env.UBER_CLIENT_ID,
+      client_secret: process.env.UBER_CLIENT_SECRET,
+      grant_type: 'client_credentials',
+      scope: 'guests.trips'
+    };
+    console.log(params);
+  
+    const { data } = await axios({
+      url: 'https://auth.uber.com/oauth/v2/token',
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      data: qs.stringify(params)
+    });
+  
+    authToken = {
+      token: data.access_token,
+      expiry: moment().add(TOKEN_EXPIRY_DAYS, 'days')
+    };
+    return `Bearer ${data.access_token}`;
+  
+} catch (error) {
+  console.error(`err when refreshing auth: `)
+  console.error(error);
+  throw new Error(error)
+}
+}
 
 async function getData(key) {
   const data = await fs.readFile(`./data/${key}.json`, 'utf-8');
@@ -33,11 +78,12 @@ async function updateUberDriveState(state, runId) {
       driver_id: "actor-driver-a",
       driver_state: SIMULATOR_DRIVER_STATES[state]
     });
+    const token = await getToken();
     await axios({
       url: `https://sandbox-api.uber.com/v1/guests/sandbox/driver-state`,
       method: 'POST',
       headers: {
-        authorization: `Bearer ${process.env.UBER_AUTH}`,
+        authorization: token,
         'content-type': 'application/json',
         'x-uber-organizationuuid': process.env.UBER_ORGANIZATION_ID
       },
@@ -60,11 +106,12 @@ async function updateUberDriveState(state, runId) {
 
 /* GET home page. */
 router.get('/', async function (req, res, next) {
+  await getToken();
   const {run: runId} = await getData("run");
   const {state} = await getData("state");
   const {time} = await getData("time");
   console.log(time)
-  res.render('index', { runId, state, time });
+  res.render('index', { runId, state, time, tokExpiry: authToken.expiry });
 });
 
 router.get('/update', async function (req, res, next) {
@@ -90,6 +137,5 @@ router.get('/set', async function (req, res, next) {
     console.log(error);
     res.status(500).json({ msg: "Somethign wrong when setting runid", err: error })
   }
-})
-
+});
 module.exports = router;
